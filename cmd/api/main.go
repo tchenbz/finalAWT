@@ -45,6 +45,7 @@ type applicationDependencies struct {
 	userModel 		data.UserModel
 	mailer mailer.Mailer
 	wg  sync.WaitGroup 
+	tokenModel data.TokenModel
 }
 
 func main() {
@@ -83,6 +84,7 @@ func main() {
 		userModel: data.UserModel {DB: db},
         mailer: mailer.New(settings.smtp.host, settings.smtp.port,
 		settings.smtp.username, settings.smtp.password, settings.smtp.sender),
+		tokenModel: data.TokenModel{DB: db},
 	}
 
 	err = appInstance.serve()

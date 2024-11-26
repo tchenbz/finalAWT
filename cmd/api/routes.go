@@ -38,6 +38,8 @@ func (a *applicationDependencies) routes() http.Handler {
 	// router.HandlerFunc(http.MethodGet, "/api/v1/users/:id/lists", a.listUserReadingListsHandler)
 	// router.HandlerFunc(http.MethodGet, "/api/v1/users/:id/reviews", a.listUserReviewsHandler)
 	router.HandlerFunc(http.MethodPost, "/v1/users", a.registerUserHandler)
+	router.HandlerFunc(http.MethodPut, "/v1/users/activated", a.activateUserHandler)
+
 
 
 	// Return router with panic recovery and rate limiting
