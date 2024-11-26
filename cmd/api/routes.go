@@ -11,12 +11,12 @@ func (a *applicationDependencies) routes() http.Handler {
 	router.MethodNotAllowed = http.HandlerFunc(a.methodNotAllowedResponse)
 
 	// Book routes
+	//router.HandlerFunc(http.MethodGet, "/api/v1/books/search", a.searchBooksHandler)
 	router.HandlerFunc(http.MethodPost, "/api/v1/books", a.createBookHandler)
 	router.HandlerFunc(http.MethodGet, "/api/v1/books/:id", a.displayBookHandler)
 	router.HandlerFunc(http.MethodPatch, "/api/v1/books/:id", a.updateBookHandler)
 	router.HandlerFunc(http.MethodDelete, "/api/v1/books/:id", a.deleteBookHandler)
 	router.HandlerFunc(http.MethodGet, "/api/v1/books", a.listBooksHandler)
-	router.HandlerFunc(http.MethodGet, "/api/v1/books/search", a.searchBooksHandler)
 
 	// Reading List routes
 	router.HandlerFunc(http.MethodPost, "/api/v1/lists", a.createReadingListHandler)
@@ -37,6 +37,8 @@ func (a *applicationDependencies) routes() http.Handler {
 	// router.HandlerFunc(http.MethodGet, "/api/v1/users/:id", a.displayUserProfileHandler)
 	// router.HandlerFunc(http.MethodGet, "/api/v1/users/:id/lists", a.listUserReadingListsHandler)
 	// router.HandlerFunc(http.MethodGet, "/api/v1/users/:id/reviews", a.listUserReviewsHandler)
+	router.HandlerFunc(http.MethodPost, "/v1/users", a.registerUserHandler)
+
 
 	// Return router with panic recovery and rate limiting
 	return a.recoverPanic(a.rateLimit(router))

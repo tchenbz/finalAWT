@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-var ErrRecordNotFound = errors.New("record not found")
-
 type Review struct {
 	ID           int64     `json:"id"`
 	BookID       int64     `json:"book_id"`

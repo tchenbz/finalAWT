@@ -6,10 +6,12 @@ import (
 	"flag"
 	"log/slog"
 	"os"
+	"sync"
 	"time"
 
 	_ "github.com/lib/pq"
 	"github.com/tchenbz/test3AWT/internal/data"
+	"github.com/tchenbz/test3AWT/internal/mailer"
 )
 
 const appVersion = "1.0.0"
@@ -25,6 +27,13 @@ type serverConfig struct {
 		burst   int
 		enabled bool
 	}
+	smtp struct {
+		host     string
+        port     int
+        username string
+        password string
+        sender   string
+    } 
 }
 
 type applicationDependencies struct {
@@ -33,6 +42,9 @@ type applicationDependencies struct {
 	bookModel       data.BookModel
 	readingListModel data.ReadingListModel
 	reviewModel     data.ReviewModel
+	userModel 		data.UserModel
+	mailer mailer.Mailer
+	wg  sync.WaitGroup 
 }
 
 func main() {
@@ -45,6 +57,12 @@ func main() {
 	flag.IntVar(&settings.limiter.burst, "limiter-burst", 5, "Rate Limiter maximum burst")
 	flag.BoolVar(&settings.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
 	flag.Parse()
+	flag.StringVar(&settings.smtp.host, "smtp-host", "sandbox.smtp.mailtrap.io", "SMTP host")
+	flag.IntVar(&settings.smtp.port, "smtp-port", 25, "SMTP port")
+	flag.StringVar(&settings.smtp.username, "smtp-username", "d120afa780d5b9", "SMTP username")
+	flag.StringVar(&settings.smtp.password, "smtp-password", "d72ca97563008b", "SMTP password")
+	flag.StringVar(&settings.smtp.sender, "smtp-sender", "Comments Community <no-reply@commentscommunity.tamikachen.net>", "SMTP sender")
+
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
@@ -62,6 +80,9 @@ func main() {
 		bookModel:       data.BookModel{DB: db},
 		readingListModel: data.ReadingListModel{DB: db},
 		reviewModel:     data.ReviewModel{DB: db},
+		userModel: data.UserModel {DB: db},
+        mailer: mailer.New(settings.smtp.host, settings.smtp.port,
+		settings.smtp.username, settings.smtp.password, settings.smtp.sender),
 	}
 
 	err = appInstance.serve()
