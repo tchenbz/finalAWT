@@ -3,7 +3,7 @@ package data
 import (
 	"strings"
 
-	"github.com/tchenbz/AWT_Test1/internal/validator"
+	"github.com/tchenbz/test3AWT/internal/validator"
 )
 
 type Filters struct {

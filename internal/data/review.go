@@ -12,7 +12,7 @@ var ErrRecordNotFound = errors.New("record not found")
 
 type Review struct {
 	ID           int64     `json:"id"`
-	ProductID    int64     `json:"product_id"`
+	BookID       int64     `json:"book_id"`
 	Content      string    `json:"content"`
 	Author       string    `json:"author"`
 	Rating       int       `json:"rating"`         
@@ -25,13 +25,14 @@ type ReviewModel struct {
 	DB *sql.DB
 }
 
+// Insert a new review into the database.
 func (m ReviewModel) Insert(review *Review) error {
 	query := `
-		INSERT INTO reviews (product_id, content, author, rating, helpful_count)
+		INSERT INTO reviews (book_id, content, author, rating, helpful_count)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, created_at, version`
 
-	args := []interface{}{review.ProductID, review.Content, review.Author, review.Rating, review.HelpfulCount}
+	args := []interface{}{review.BookID, review.Content, review.Author, review.Rating, review.HelpfulCount}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -39,23 +40,24 @@ func (m ReviewModel) Insert(review *Review) error {
 	return m.DB.QueryRowContext(ctx, query, args...).Scan(&review.ID, &review.CreatedAt, &review.Version)
 }
 
-func (m ReviewModel) Get(productID, reviewID int64) (*Review, error) {
-	if productID < 1 || reviewID < 1 {
+// Get retrieves a review by book ID and review ID.
+func (m ReviewModel) Get(reviewID int64) (*Review, error) {
+	if reviewID < 1 {
 		return nil, ErrRecordNotFound
 	}
 
 	query := `
-		SELECT id, product_id, content, author, rating, helpful_count, created_at, version
+		SELECT id, book_id, content, author, rating, helpful_count, created_at, version
 		FROM reviews
-		WHERE product_id = $1 AND id = $2`
+		WHERE id = $1`
 
 	var review Review
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := m.DB.QueryRowContext(ctx, query, productID, reviewID).Scan(
-		&review.ID, &review.ProductID, &review.Content, &review.Author, 
+	err := m.DB.QueryRowContext(ctx, query, reviewID).Scan(
+		&review.ID, &review.BookID, &review.Content, &review.Author,
 		&review.Rating, &review.HelpfulCount, &review.CreatedAt, &review.Version,
 	)
 
@@ -71,14 +73,15 @@ func (m ReviewModel) Get(productID, reviewID int64) (*Review, error) {
 	return &review, nil
 }
 
+// Update modifies an existing review in the database.
 func (m ReviewModel) Update(review *Review) error {
 	query := `
 		UPDATE reviews
 		SET content = $1, author = $2, rating = $3, helpful_count = $4, version = version + 1
-		WHERE product_id = $5 AND id = $6
+		WHERE id = $5
 		RETURNING version`
 
-	args := []interface{}{review.Content, review.Author, review.Rating, review.HelpfulCount, review.ProductID, review.ID}
+	args := []interface{}{review.Content, review.Author, review.Rating, review.HelpfulCount, review.ID}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -96,19 +99,20 @@ func (m ReviewModel) Update(review *Review) error {
 	return nil
 }
 
-func (m ReviewModel) Delete(productID, reviewID int64) error {
-	if productID < 1 || reviewID < 1 {
+// Delete removes a review from the database by review ID.
+func (m ReviewModel) Delete(reviewID int64) error {
+	if reviewID < 1 {
 		return ErrRecordNotFound
 	}
 
 	query := `
 		DELETE FROM reviews
-		WHERE product_id = $1 AND id = $2`
+		WHERE id = $1`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	result, err := m.DB.ExecContext(ctx, query, productID, reviewID)
+	result, err := m.DB.ExecContext(ctx, query, reviewID)
 	if err != nil {
 		return err
 	}
@@ -125,9 +129,10 @@ func (m ReviewModel) Delete(productID, reviewID int64) error {
 	return nil
 }
 
+// GetAll retrieves all reviews with filtering and pagination.
 func (m ReviewModel) GetAll(content, author string, rating int, filters Filters) ([]*Review, Metadata, error) {
 	query := fmt.Sprintf(`
-		SELECT COUNT(*) OVER(), id, product_id, content, author, rating, helpful_count, created_at, version
+		SELECT COUNT(*) OVER(), id, book_id, content, author, rating, helpful_count, created_at, version
 		FROM reviews
 		WHERE (content ILIKE $1 OR $1 = '')
 		AND (author ILIKE $2 OR $2 = '')
@@ -160,7 +165,7 @@ func (m ReviewModel) GetAll(content, author string, rating int, filters Filters)
 		err := rows.Scan(
 			&totalRecords,
 			&review.ID,
-			&review.ProductID,
+			&review.BookID,
 			&review.Content,
 			&review.Author,
 			&review.Rating,
@@ -182,11 +187,12 @@ func (m ReviewModel) GetAll(content, author string, rating int, filters Filters)
 	return reviews, metadata, nil
 }
 
-func (m ReviewModel) GetAllForProduct(productID int64, content, author string, rating int, filters Filters) ([]*Review, Metadata, error) {
+// GetAllForBook retrieves all reviews for a specific book with filtering and pagination.
+func (m ReviewModel) GetAllForBook(bookID int64, content, author string, rating int, filters Filters) ([]*Review, Metadata, error) {
 	query := fmt.Sprintf(`
-		SELECT COUNT(*) OVER(), id, product_id, content, author, rating, helpful_count, created_at, version
+		SELECT COUNT(*) OVER(), id, book_id, content, author, rating, helpful_count, created_at, version
 		FROM reviews
-		WHERE product_id = $1
+		WHERE book_id = $1
 		AND (content ILIKE $2 OR $2 = '')
 		AND (author ILIKE $3 OR $3 = '')
 		AND (rating = $4 OR $4 = 0)
@@ -194,7 +200,7 @@ func (m ReviewModel) GetAllForProduct(productID int64, content, author string, r
 		LIMIT $5 OFFSET $6`, filters.sortColumn(), filters.sortDirection())
 
 	args := []interface{}{
-		productID,
+		bookID,
 		"%" + content + "%",
 		"%" + author + "%",
 		rating,
@@ -219,7 +225,7 @@ func (m ReviewModel) GetAllForProduct(productID int64, content, author string, r
 		err := rows.Scan(
 			&totalRecords,
 			&review.ID,
-			&review.ProductID,
+			&review.BookID,
 			&review.Content,
 			&review.Author,
 			&review.Rating,

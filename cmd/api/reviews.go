@@ -4,13 +4,13 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/tchenbz/AWT_Test1/internal/data"
-	"github.com/tchenbz/AWT_Test1/internal/validator"
+	"github.com/tchenbz/test3AWT/internal/data"
+	"github.com/tchenbz/test3AWT/internal/validator"
 )
 
-// createReviewHandler handles POST requests for creating a new review.
+// createReviewHandler handles POST requests for creating a new review for a book.
 func (a *applicationDependencies) createReviewHandler(w http.ResponseWriter, r *http.Request) {
-	productID, err := a.readIDParam(r)
+	bookID, err := a.readIDParam(r)
 	if err != nil {
 		a.notFoundResponse(w, r)
 		return
@@ -29,10 +29,10 @@ func (a *applicationDependencies) createReviewHandler(w http.ResponseWriter, r *
 	}
 
 	review := &data.Review{
-		ProductID: productID,
-		Content:   input.Content,
-		Author:    input.Author,
-		Rating:    input.Rating,
+		BookID:  bookID,
+		Content: input.Content,
+		Author:  input.Author,
+		Rating:  input.Rating,
 	}
 
 	// v := validator.New()
@@ -55,56 +55,41 @@ func (a *applicationDependencies) createReviewHandler(w http.ResponseWriter, r *
 	}
 }
 
-// displayReviewHandler handles GET requests for displaying a specific review by product and review ID.
-func (a *applicationDependencies) displayReviewHandler(w http.ResponseWriter, r *http.Request) {
-	// Extract the product ID and review ID from the URL
-	productID, err := a.readIDParam(r)
-	if err != nil {
-		a.notFoundResponse(w, r)
-		return
-	}
-	reviewID, err := a.readIDParam(r)
-	if err != nil {
-		a.notFoundResponse(w, r)
-		return
-	}
+// // displayReviewHandler handles GET requests for displaying a specific review.
+// func (a *applicationDependencies) displayReviewHandler(w http.ResponseWriter, r *http.Request) {
+// 	reviewID, err := a.readIDParam(r)
+// 	if err != nil {
+// 		a.notFoundResponse(w, r)
+// 		return
+// 	}
 
-	// Fetch the review from the database
-	review, err := a.reviewModel.Get(productID, reviewID)
-	if err != nil {
-		switch {
-		case errors.Is(err, data.ErrRecordNotFound):
-			a.notFoundResponse(w, r)
-		default:
-			a.serverErrorResponse(w, r, err)
-		}
-		return
-	}
+// 	review, err := a.reviewModel.Get(reviewID)
+// 	if err != nil {
+// 		switch {
+// 		case errors.Is(err, data.ErrRecordNotFound):
+// 			a.notFoundResponse(w, r)
+// 		default:
+// 			a.serverErrorResponse(w, r, err)
+// 		}
+// 		return
+// 	}
 
-	// Send the review data in JSON format
-	data := envelope{"review": review}
-	err = a.writeJSON(w, http.StatusOK, data, nil)
-	if err != nil {
-		a.serverErrorResponse(w, r, err)
-	}
-}
+// 	data := envelope{"review": review}
+// 	err = a.writeJSON(w, http.StatusOK, data, nil)
+// 	if err != nil {
+// 		a.serverErrorResponse(w, r, err)
+// 	}
+// }
 
-// updateReviewHandler handles PATCH requests for updating a specific review by product and review ID.
+// updateReviewHandler handles PATCH requests for updating a specific review.
 func (a *applicationDependencies) updateReviewHandler(w http.ResponseWriter, r *http.Request) {
-	// Extract the product ID and review ID from the URL
-	productID, err := a.readIDParam(r)
-	if err != nil {
-		a.notFoundResponse(w, r)
-		return
-	}
 	reviewID, err := a.readIDParam(r)
 	if err != nil {
 		a.notFoundResponse(w, r)
 		return
 	}
 
-	// Retrieve the existing review from the database
-	review, err := a.reviewModel.Get(productID, reviewID)
+	review, err := a.reviewModel.Get(reviewID)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -115,7 +100,6 @@ func (a *applicationDependencies) updateReviewHandler(w http.ResponseWriter, r *
 		return
 	}
 
-	// Create a temporary struct for incoming updates
 	var input struct {
 		Content      *string `json:"content"`
 		Author       *string `json:"author"`
@@ -123,14 +107,12 @@ func (a *applicationDependencies) updateReviewHandler(w http.ResponseWriter, r *
 		HelpfulCount *int    `json:"helpful_count"`
 	}
 
-	// Decode the request JSON into the input struct
 	err = a.readJSON(w, r, &input)
 	if err != nil {
 		a.badRequestResponse(w, r, err)
 		return
 	}
 
-	// Update the review fields as needed
 	if input.Content != nil {
 		review.Content = *input.Content
 	}
@@ -144,7 +126,6 @@ func (a *applicationDependencies) updateReviewHandler(w http.ResponseWriter, r *
 		review.HelpfulCount = *input.HelpfulCount
 	}
 
-	// // Validate the updated review
 	// v := validator.New()
 	// data.ValidateReview(v, review)
 	// if !v.IsEmpty() {
@@ -165,19 +146,15 @@ func (a *applicationDependencies) updateReviewHandler(w http.ResponseWriter, r *
 	}
 }
 
+// deleteReviewHandler handles DELETE requests for deleting a review.
 func (a *applicationDependencies) deleteReviewHandler(w http.ResponseWriter, r *http.Request) {
-	productID, err := a.readIDParam(r)
-	if err != nil {
-		a.notFoundResponse(w, r)
-		return
-	}
 	reviewID, err := a.readIDParam(r)
 	if err != nil {
 		a.notFoundResponse(w, r)
 		return
 	}
 
-	err = a.reviewModel.Delete(productID, reviewID)
+	err = a.reviewModel.Delete(reviewID)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -195,48 +172,9 @@ func (a *applicationDependencies) deleteReviewHandler(w http.ResponseWriter, r *
 	}
 }
 
-func (a *applicationDependencies) listReviewsHandler(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		Content string
-		Author  string
-		Rating  int
-		data.Filters
-	}
-
-	query := r.URL.Query()
-	input.Content = a.getSingleQueryParameter(query, "content", "")
-	input.Author = a.getSingleQueryParameter(query, "author", "")
-	input.Rating = a.getSingleIntegerParameter(query, "rating", 0, validator.New())
-	input.Filters.Page = a.getSingleIntegerParameter(query, "page", 1, validator.New())
-	input.Filters.PageSize = a.getSingleIntegerParameter(query, "page_size", 10, validator.New())
-	input.Filters.Sort = a.getSingleQueryParameter(query, "sort", "id")
-	input.Filters.SortSafeList = []string{"id", "rating", "helpful_count", "-id", "-rating", "-helpful_count"}
-
-	v := validator.New()
-	data.ValidateFilters(v, input.Filters)
-	if !v.IsEmpty() {
-		a.failedValidationResponse(w, r, v.Errors)
-		return
-	}
-
-	reviews, metadata, err := a.reviewModel.GetAll(input.Content, input.Author, input.Rating, input.Filters)
-	if err != nil {
-		a.serverErrorResponse(w, r, err)
-		return
-	}
-
-	data := envelope{
-		"reviews":  reviews,
-		"metadata": metadata,
-	}
-	err = a.writeJSON(w, http.StatusOK, data, nil)
-	if err != nil {
-		a.serverErrorResponse(w, r, err)
-	}
-}
-
-func (a *applicationDependencies) listProductReviewsHandler(w http.ResponseWriter, r *http.Request) {
-	productID, err := a.readIDParam(r)
+// listBookReviewsHandler handles GET requests for listing reviews of a specific book.
+func (a *applicationDependencies) listBookReviewsHandler(w http.ResponseWriter, r *http.Request) {
+	bookID, err := a.readIDParam(r)
 	if err != nil {
 		a.notFoundResponse(w, r)
 		return
@@ -265,7 +203,7 @@ func (a *applicationDependencies) listProductReviewsHandler(w http.ResponseWrite
 		return
 	}
 
-	reviews, metadata, err := a.reviewModel.GetAllForProduct(productID, input.Content, input.Author, input.Rating, input.Filters)
+	reviews, metadata, err := a.reviewModel.GetAllForBook(bookID, input.Content, input.Author, input.Rating, input.Filters)
 	if err != nil {
 		a.serverErrorResponse(w, r, err)
 		return

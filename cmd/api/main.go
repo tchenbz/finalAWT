@@ -9,7 +9,7 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
-	"github.com/tchenbz/AWT_Test1/internal/data"
+	"github.com/tchenbz/test3AWT/internal/data"
 )
 
 const appVersion = "1.0.0"
@@ -21,18 +21,18 @@ type serverConfig struct {
 		dsn string
 	}
 	limiter struct {
-        rps float64                    
-        burst int                        
-        enabled bool                     
-    }
-
+		rps     float64
+		burst   int
+		enabled bool
+	}
 }
 
 type applicationDependencies struct {
-	config        serverConfig
-	logger        *slog.Logger
-	productModel  data.ProductModel
-	reviewModel   data.ReviewModel
+	config          serverConfig
+	logger          *slog.Logger
+	bookModel       data.BookModel
+	readingListModel data.ReadingListModel
+	reviewModel     data.ReviewModel
 }
 
 func main() {
@@ -40,7 +40,7 @@ func main() {
 
 	flag.IntVar(&settings.port, "port", 4000, "Server port")
 	flag.StringVar(&settings.environment, "env", "development", "Environment (development|staging|production)")
-	flag.StringVar(&settings.db.dsn, "db-dsn", os.Getenv("TEST2_DB_DSN"), "PostgreSQL DSN")
+	flag.StringVar(&settings.db.dsn, "db-dsn", os.Getenv("TEST3_DB_DSN"), "PostgreSQL DSN")
 	flag.Float64Var(&settings.limiter.rps, "limiter-rps", 2, "Rate Limiter maximum requests per second")
 	flag.IntVar(&settings.limiter.burst, "limiter-burst", 5, "Rate Limiter maximum burst")
 	flag.BoolVar(&settings.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
@@ -57,18 +57,18 @@ func main() {
 	logger.Info("database connection pool established")
 
 	appInstance := &applicationDependencies{
-		config:    settings,
-		logger:    logger,
-		productModel: data.ProductModel{DB: db},
-		reviewModel: data.ReviewModel{DB: db},
+		config:          settings,
+		logger:          logger,
+		bookModel:       data.BookModel{DB: db},
+		readingListModel: data.ReadingListModel{DB: db},
+		reviewModel:     data.ReviewModel{DB: db},
 	}
 
-    err = appInstance.serve()
-    if err != nil {
-        logger.Error(err.Error())
-        os.Exit(1)
-    }
-
+	err = appInstance.serve()
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
 }
 
 func openDB(settings serverConfig) (*sql.DB, error) {
