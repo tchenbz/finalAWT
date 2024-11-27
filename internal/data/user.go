@@ -45,6 +45,7 @@ if err != nil {
 return nil
 }
 
+var AnonymousUser = &User{}
 
 type User struct {
     ID         int64		     `json:"id"`
@@ -55,6 +56,11 @@ type User struct {
     Activated  bool       `json:"activated"`
     Version     int        `json:"-"`  
 }
+
+func (u *User) IsAnonymous() bool {
+    return u == AnonymousUser
+}
+
 
 // define the password type (the plaintext + hashed password) 
 // lowercase because we do not want it to be public
