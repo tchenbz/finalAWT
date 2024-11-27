@@ -35,13 +35,6 @@ func (a *applicationDependencies) createReviewHandler(w http.ResponseWriter, r *
 		Rating:  input.Rating,
 	}
 
-	// v := validator.New()
-	// data.ValidateReview(v, review)
-	// if !v.IsEmpty() {
-	// 	a.failedValidationResponse(w, r, v.Errors)
-	// 	return
-	// }
-
 	err = a.reviewModel.Insert(review)
 	if err != nil {
 		a.serverErrorResponse(w, r, err)
@@ -54,32 +47,6 @@ func (a *applicationDependencies) createReviewHandler(w http.ResponseWriter, r *
 		a.serverErrorResponse(w, r, err)
 	}
 }
-
-// // displayReviewHandler handles GET requests for displaying a specific review.
-// func (a *applicationDependencies) displayReviewHandler(w http.ResponseWriter, r *http.Request) {
-// 	reviewID, err := a.readIDParam(r)
-// 	if err != nil {
-// 		a.notFoundResponse(w, r)
-// 		return
-// 	}
-
-// 	review, err := a.reviewModel.Get(reviewID)
-// 	if err != nil {
-// 		switch {
-// 		case errors.Is(err, data.ErrRecordNotFound):
-// 			a.notFoundResponse(w, r)
-// 		default:
-// 			a.serverErrorResponse(w, r, err)
-// 		}
-// 		return
-// 	}
-
-// 	data := envelope{"review": review}
-// 	err = a.writeJSON(w, http.StatusOK, data, nil)
-// 	if err != nil {
-// 		a.serverErrorResponse(w, r, err)
-// 	}
-// }
 
 // updateReviewHandler handles PATCH requests for updating a specific review.
 func (a *applicationDependencies) updateReviewHandler(w http.ResponseWriter, r *http.Request) {
@@ -125,13 +92,6 @@ func (a *applicationDependencies) updateReviewHandler(w http.ResponseWriter, r *
 	if input.HelpfulCount != nil {
 		review.HelpfulCount = *input.HelpfulCount
 	}
-
-	// v := validator.New()
-	// data.ValidateReview(v, review)
-	// if !v.IsEmpty() {
-	// 	a.failedValidationResponse(w, r, v.Errors)
-	// 	return
-	// }
 
 	err = a.reviewModel.Update(review)
 	if err != nil {

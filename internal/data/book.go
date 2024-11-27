@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -12,16 +13,27 @@ import (
 )
 
 type Book struct {
-	ID           int64     `json:"id"`
-	Title        string    `json:"title"`
-	Authors      []string  `json:"authors"`
-	ISBN         string    `json:"isbn"`
-	Publication  string    `json:"publication_date"`
-	Genre        string    `json:"genre"`
-	Description  string    `json:"description"`
-	AverageRating float32  `json:"average_rating"`
-	CreatedAt    time.Time `json:"-"`
-	Version      int32     `json:"version"`
+    ID            int64     `json:"id"`
+    Title         string    `json:"title"`
+    Authors       []string  `json:"authors"`
+    ISBN          string    `json:"isbn"`
+    Publication   time.Time `json:"publication_date"` // Change to time.Time
+    Genre         string    `json:"genre"`
+    Description   string    `json:"description"`
+    AverageRating float32   `json:"average_rating"`
+    CreatedAt     time.Time `json:"-"`
+    Version       int32     `json:"version"`
+}
+
+func (b *Book) MarshalJSON() ([]byte, error) {
+    type Alias Book
+    return json.Marshal(&struct {
+        Publication string `json:"publication_date"`
+        *Alias
+    }{
+        Publication: b.Publication.Format("2006-01-02"),
+        Alias:       (*Alias)(b),
+    })
 }
 
 type BookModel struct {
@@ -29,20 +41,20 @@ type BookModel struct {
 }
 
 func (m BookModel) Insert(book *Book) error {
-	query := `
-		INSERT INTO books (title, authors, isbn, publication_date, genre, description)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, created_at, version`
+    query := `
+        INSERT INTO books (title, authors, isbn, publication_date, genre, description)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id, created_at, version`
 
-	args := []interface{}{book.Title, pq.Array(book.Authors), book.ISBN, book.Publication, book.Genre, book.Description}
-	return m.DB.QueryRowContext(context.Background(), query, args...).Scan(&book.ID, &book.CreatedAt, &book.Version)
+    args := []interface{}{book.Title, pq.Array(book.Authors), book.ISBN, book.Publication, book.Genre, book.Description}
+    return m.DB.QueryRowContext(context.Background(), query, args...).Scan(&book.ID, &book.CreatedAt, &book.Version)
 }
 
 func ValidateBook(v *validator.Validator, book *Book) {
 	v.Check(book.Title != "", "title", "must be provided")
 	v.Check(len(book.Authors) > 0, "authors", "must include at least one author")
 	v.Check(book.ISBN != "", "isbn", "must be provided")
-	v.Check(book.Publication != "", "publication_date", "must be provided")
+	v.Check(book.Publication != time.Time{}, "publication_date", "must be provided")
 	v.Check(book.Genre != "", "genre", "must be provided")
 	v.Check(book.Description != "", "description", "must be provided")
 }
@@ -88,37 +100,23 @@ func (m BookModel) Get(id int64) (*Book, error) {
 }
 
 func (m BookModel) Update(book *Book) error {
-	query := `
-		UPDATE books
-		SET title = $1, authors = $2, isbn = $3, publication_date = $4, genre = $5, description = $6, average_rating = $7, version = version + 1
-		WHERE id = $8
-		RETURNING version`
+    query := `
+        UPDATE books
+        SET title = $1, authors = $2, isbn = $3, publication_date = $4, genre = $5, description = $6, version = version + 1
+        WHERE id = $7
+        RETURNING version`
 
-	args := []interface{}{
-		book.Title,
-		pq.Array(book.Authors),
-		book.ISBN,
-		book.Publication,
-		book.Genre,
-		book.Description,
-		book.AverageRating,
-		book.ID,
-	}
+    args := []interface{}{
+        book.Title,
+        pq.Array(book.Authors),
+        book.ISBN,
+        book.Publication, // Use time.Time directly
+        book.Genre,
+        book.Description,
+        book.ID,
+    }
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	err := m.DB.QueryRowContext(ctx, query, args...).Scan(&book.Version)
-	if err != nil {
-		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			return ErrRecordNotFound
-		default:
-			return err
-		}
-	}
-
-	return nil
+    return m.DB.QueryRowContext(context.Background(), query, args...).Scan(&book.Version)
 }
 
 func (m BookModel) Delete(id int64) error {

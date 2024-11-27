@@ -4,12 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/tchenbz/test3AWT/internal/data"
 	"github.com/tchenbz/test3AWT/internal/validator"
 )
 
-// Handler to create a book
+//Handler to create a book
 func (a *applicationDependencies) createBookHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Title       string   `json:"title"`
@@ -26,11 +27,19 @@ func (a *applicationDependencies) createBookHandler(w http.ResponseWriter, r *ht
 		return
 	}
 
+	parsedDate, err := time.Parse("2006-01-02", input.Publication)
+	if err != nil {
+		a.failedValidationResponse(w, r, map[string]string{"publication_date": "must be a valid date in YYYY-MM-DD format"})
+		return
+	}
+	//input.Publication = parsedDate
+
+
 	book := &data.Book{
 		Title:       input.Title,
 		Authors:     input.Authors,
 		ISBN:        input.ISBN,
-		Publication: input.Publication,
+        Publication: parsedDate, // Assign the parsed date here
 		Genre:       input.Genre,
 		Description: input.Description,
 	}
@@ -57,6 +66,7 @@ func (a *applicationDependencies) createBookHandler(w http.ResponseWriter, r *ht
 		a.serverErrorResponse(w, r, err)
 	}
 }
+
 
 // Handler to display book details
 func (a *applicationDependencies) displayBookHandler(w http.ResponseWriter, r *http.Request) {
@@ -86,75 +96,80 @@ func (a *applicationDependencies) displayBookHandler(w http.ResponseWriter, r *h
 
 // Handler to update book details
 func (a *applicationDependencies) updateBookHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := a.readIDParam(r)
-	if err != nil {
-		a.notFoundResponse(w, r)
-		return
-	}
+    id, err := a.readIDParam(r)
+    if err != nil {
+        a.notFoundResponse(w, r)
+        return
+    }
 
-	book, err := a.bookModel.Get(id)
-	if err != nil {
-		switch {
-		case errors.Is(err, data.ErrRecordNotFound):
-			a.notFoundResponse(w, r)
-		default:
-			a.serverErrorResponse(w, r, err)
-		}
-		return
-	}
+    book, err := a.bookModel.Get(id)
+    if err != nil {
+        switch {
+        case errors.Is(err, data.ErrRecordNotFound):
+            a.notFoundResponse(w, r)
+        default:
+            a.serverErrorResponse(w, r, err)
+        }
+        return
+    }
 
-	var input struct {
-		Title       *string   `json:"title"`
-		Authors     *[]string `json:"authors"`
-		ISBN        *string   `json:"isbn"`
-		Publication *string   `json:"publication_date"`
-		Genre       *string   `json:"genre"`
-		Description *string   `json:"description"`
-	}
+    var input struct {
+        Title       *string   `json:"title"`
+        Authors     *[]string `json:"authors"`
+        ISBN        *string   `json:"isbn"`
+        Publication *string   `json:"publication_date"` // Optional string
+        Genre       *string   `json:"genre"`
+        Description *string   `json:"description"`
+    }
 
-	err = a.readJSON(w, r, &input)
-	if err != nil {
-		a.badRequestResponse(w, r, err)
-		return
-	}
+    err = a.readJSON(w, r, &input)
+    if err != nil {
+        a.badRequestResponse(w, r, err)
+        return
+    }
 
-	if input.Title != nil {
-		book.Title = *input.Title
-	}
-	if input.Authors != nil {
-		book.Authors = *input.Authors
-	}
-	if input.ISBN != nil {
-		book.ISBN = *input.ISBN
-	}
-	if input.Publication != nil {
-		book.Publication = *input.Publication
-	}
-	if input.Genre != nil {
-		book.Genre = *input.Genre
-	}
-	if input.Description != nil {
-		book.Description = *input.Description
-	}
+    if input.Title != nil {
+        book.Title = *input.Title
+    }
+    if input.Authors != nil {
+        book.Authors = *input.Authors
+    }
+    if input.ISBN != nil {
+        book.ISBN = *input.ISBN
+    }
+    if input.Publication != nil {
+        parsedDate, err := time.Parse("2006-01-02", *input.Publication)
+        if err != nil {
+            a.failedValidationResponse(w, r, map[string]string{"publication_date": "must be a valid date in YYYY-MM-DD format"})
+            return
+        }
+        book.Publication = parsedDate
+    }
+    if input.Genre != nil {
+        book.Genre = *input.Genre
+    }
+    if input.Description != nil {
+        book.Description = *input.Description
+    }
 
-	v := validator.New()
-	data.ValidateBook(v, book)
-	if !v.IsEmpty() {
-		a.failedValidationResponse(w, r, v.Errors)
-		return
-	}
+    v := validator.New()
+    data.ValidateBook(v, book)
+    if !v.IsEmpty() {
+        a.failedValidationResponse(w, r, v.Errors)
+        return
+    }
 
-	err = a.bookModel.Update(book)
-	if err != nil {
-		a.serverErrorResponse(w, r, err)
-		return
-	}
+    err = a.bookModel.Update(book)
+    if err != nil {
+        a.serverErrorResponse(w, r, err)
+        return
+    }
 
-	data := envelope{"book": book}
-	err = a.writeJSON(w, http.StatusOK, data, nil)
-	if err != nil {
-		a.serverErrorResponse(w, r, err)
-	}
+    data := envelope{"book": book}
+    err = a.writeJSON(w, http.StatusOK, data, nil)
+    if err != nil {
+        a.serverErrorResponse(w, r, err)
+    }
 }
 
 // Handler to delete a book

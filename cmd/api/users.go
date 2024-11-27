@@ -134,6 +134,13 @@ func (a *applicationDependencies) registerUserHandler(w http.ResponseWriter, r *
 		return
 	}
 
+	err = a.permissionModel.AddForUser(user.ID, "comments:read")
+    if err != nil {
+        a.serverErrorResponse(w, r, err)
+        return
+    }
+
+
 	// Generate a new activation token that expires in 3 days
 	token, err := a.tokenModel.New(user.ID, 3*24*time.Hour, data.ScopeActivation)
 	if err != nil {

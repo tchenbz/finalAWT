@@ -133,3 +133,55 @@ r = a.contextSetUser(r, user)
  })
 }
 
+// This middleware checks if the user is authenticated (not anonymous)
+func (a *applicationDependencies) requireAuthenticatedUser(next http.HandlerFunc) http.HandlerFunc {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+      
+       user := a.contextGetUser(r)
+
+       if user.IsAnonymous() {
+            a.authenticationRequiredResponse(w, r)
+            return
+       }
+        next.ServeHTTP(w, r)
+    })
+}
+
+func (a *applicationDependencies) requireActivatedUser(next http.HandlerFunc) http.HandlerFunc {
+    fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+       
+       user := a.contextGetUser(r)
+
+       if !user.Activated {
+            a.inactiveAccountResponse(w, r)
+            return
+      }
+	  next.ServeHTTP(w, r)
+    })
+//We pass the activation check middleware to the authentication 
+// middleware to call (next) if the authentication check succeeds
+// In other words, only check if the user is activated if they are
+// actually authenticated. 
+   return a.requireAuthenticatedUser(fn)
+}
+
+func (a *applicationDependencies) requirePermission(permissionCode string, next http.HandlerFunc)http.HandlerFunc { 
+   fn := func(w http.ResponseWriter, r *http.Request) {
+       user := a.contextGetUser(r)
+       // get all the permissions associated with the user
+       permissions, err := a.permissionModel.GetAllForUser(user.ID)
+        if err != nil {
+            a.serverErrorResponse(w, r, err)
+            return
+        }
+		if !permissions.Include(permissionCode) {
+            a.notPermittedResponse(w, r)
+            return
+   }
+   // they are good. Let's keep going
+   next.ServeHTTP(w, r)
+ }
+
+ return a.requireActivatedUser(fn)
+  
+}
