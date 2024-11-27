@@ -28,7 +28,6 @@ func (a *applicationDependencies) createAuthenticationTokenHandler(w http.Respon
         a.failedValidationResponse(w, r, v.Errors)
         return
     }
-    // Is there an associated user for the provided email?
     user, err := a.userModel.GetByEmail(incomingData.Email)
 	if err != nil {
         switch {
@@ -39,14 +38,12 @@ func (a *applicationDependencies) createAuthenticationTokenHandler(w http.Respon
         }
         return
     }
-   // The user is found. Does their password match?
    match, err := user.Password.Matches(incomingData.Password)
    if err != nil {
 	a.serverErrorResponse(w, r, err)
 	return
 	}
-	// Wrong password
-	// We will define invalidCredentialsResponse() later
+
 	if !match {
 		a.invalidCredentialsResponse(w, r)
 		return
@@ -62,7 +59,6 @@ func (a *applicationDependencies) createAuthenticationTokenHandler(w http.Respon
 			"authentication_token": token,
 	   }
 	 
-		// Return the bearer token
 		err = a.writeJSON(w, http.StatusCreated, data, nil)
 		if err != nil {
 		   a.serverErrorResponse(w, r, err)

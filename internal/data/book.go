@@ -17,7 +17,7 @@ type Book struct {
     Title         string    `json:"title"`
     Authors       []string  `json:"authors"`
     ISBN          string    `json:"isbn"`
-    Publication   time.Time `json:"publication_date"` // Change to time.Time
+    Publication   time.Time `json:"publication_date"`
     Genre         string    `json:"genre"`
     Description   string    `json:"description"`
     AverageRating float32   `json:"average_rating"`
@@ -110,7 +110,7 @@ func (m BookModel) Update(book *Book) error {
         book.Title,
         pq.Array(book.Authors),
         book.ISBN,
-        book.Publication, // Use time.Time directly
+        book.Publication, 
         book.Genre,
         book.Description,
         book.ID,

@@ -7,9 +7,8 @@ import (
     "time"
     "github.com/lib/pq"
 )
-// We will have the permissions in a slice which we will be able to search
 type Permissions []string
-// Is the permission code found for the Permissions slice
+
 func (p Permissions) Include(code string) bool {
     return slices.Contains(p, code)
 }
@@ -17,7 +16,7 @@ func (p Permissions) Include(code string) bool {
 type PermissionModel struct {
     DB *sql.DB
 }
-// What are all the permissions associated with the user
+
 func (p PermissionModel) GetAllForUser(userID int64) (Permissions, error) {
     query := `
                SELECT permissions.code
@@ -34,9 +33,7 @@ func (p PermissionModel) GetAllForUser(userID int64) (Permissions, error) {
 	  if err != nil {
 		  return nil, err
 	  }  
-    // Ensure to release resources after use
     defer rows.Close()
-   // Store the permissions for the user in our slice
     var permissions Permissions
     for rows.Next() {
         var permission string
@@ -46,7 +43,7 @@ func (p PermissionModel) GetAllForUser(userID int64) (Permissions, error) {
             return nil, err
         }
 		permissions = append(permissions, permission)
-		} // end of for loop
+		} 
 	
 		err = rows.Err()
 		if err != nil {
@@ -57,8 +54,6 @@ func (p PermissionModel) GetAllForUser(userID int64) (Permissions, error) {
 	
 	}
 	
-	// Add permissions for the user. Notice that this function accepts 
-	// multiple permissions (...string)
 func (p PermissionModel) AddForUser(userID int64, codes ...string) error {
 		query := `
         INSERT INTO users_permissions
@@ -68,7 +63,6 @@ func (p PermissionModel) AddForUser(userID int64, codes ...string) error {
    ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
    defer cancel()
 
-  // slices need to be converted to arrays to work in PostgreSQL
    _, err := p.DB.ExecContext(ctx, query, userID, pq.Array(codes))
 
    return err

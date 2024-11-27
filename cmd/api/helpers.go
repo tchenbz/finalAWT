@@ -124,7 +124,6 @@ func (a *applicationDependencies) getSingleIntegerParameter(queryParameters url.
 	return intValue
 }
 
-// Accept a function and run it in the background also recover from any panic
 func (a *applicationDependencies) background(fn func()) {
     a.wg.Add(1) 
     go func() {

@@ -23,7 +23,6 @@ type ReviewModel struct {
 	DB *sql.DB
 }
 
-// Insert a new review into the database.
 func (m ReviewModel) Insert(review *Review) error {
 	query := `
 		INSERT INTO reviews (book_id, content, author, rating, helpful_count)
@@ -38,7 +37,6 @@ func (m ReviewModel) Insert(review *Review) error {
 	return m.DB.QueryRowContext(ctx, query, args...).Scan(&review.ID, &review.CreatedAt, &review.Version)
 }
 
-// Get retrieves a review by book ID and review ID.
 func (m ReviewModel) Get(reviewID int64) (*Review, error) {
 	if reviewID < 1 {
 		return nil, ErrRecordNotFound
@@ -71,7 +69,6 @@ func (m ReviewModel) Get(reviewID int64) (*Review, error) {
 	return &review, nil
 }
 
-// Update modifies an existing review in the database.
 func (m ReviewModel) Update(review *Review) error {
 	query := `
 		UPDATE reviews
@@ -97,7 +94,6 @@ func (m ReviewModel) Update(review *Review) error {
 	return nil
 }
 
-// Delete removes a review from the database by review ID.
 func (m ReviewModel) Delete(reviewID int64) error {
 	if reviewID < 1 {
 		return ErrRecordNotFound
@@ -127,7 +123,6 @@ func (m ReviewModel) Delete(reviewID int64) error {
 	return nil
 }
 
-// GetAll retrieves all reviews with filtering and pagination.
 func (m ReviewModel) GetAll(content, author string, rating int, filters Filters) ([]*Review, Metadata, error) {
 	query := fmt.Sprintf(`
 		SELECT COUNT(*) OVER(), id, book_id, content, author, rating, helpful_count, created_at, version
@@ -185,7 +180,6 @@ func (m ReviewModel) GetAll(content, author string, rating int, filters Filters)
 	return reviews, metadata, nil
 }
 
-// GetAllForBook retrieves all reviews for a specific book with filtering and pagination.
 func (m ReviewModel) GetAllForBook(bookID int64, content, author string, rating int, filters Filters) ([]*Review, Metadata, error) {
 	query := fmt.Sprintf(`
 		SELECT COUNT(*) OVER(), id, book_id, content, author, rating, helpful_count, created_at, version

@@ -18,21 +18,20 @@ func (a *applicationDependencies) routes() http.Handler {
 	router.HandlerFunc(http.MethodDelete, "/v1/books/:id", a.requirePermission("comments:write", a.deleteBookHandler))
     router.HandlerFunc(http.MethodGet, "/v1/books", a.requirePermission("comments:read", a.listBooksHandler))
 
-
 	// Reading List routes
-	router.HandlerFunc(http.MethodPost, "/v1/lists", a.createReadingListHandler)
-	router.HandlerFunc(http.MethodGet, "/v1/lists/:id", a.displayReadingListHandler)
-	router.HandlerFunc(http.MethodPatch, "/v1/lists/:id", a.updateReadingListHandler)
-	router.HandlerFunc(http.MethodDelete, "/v1/lists/:id", a.deleteReadingListHandler)
-	router.HandlerFunc(http.MethodGet, "/v1/lists", a.listReadingListsHandler)
-	router.HandlerFunc(http.MethodPost, "/v1/lists/:id/books", a.addBookToReadingListHandler)
-	router.HandlerFunc(http.MethodDelete, "/v1/lists/:id/books", a.removeBookFromReadingListHandler)
+	router.HandlerFunc(http.MethodPost, "/v1/lists", a.requirePermission("readinglists:write", a.createReadingListHandler))
+	router.HandlerFunc(http.MethodPatch, "/v1/lists/:id", a.requirePermission("readinglists:write", a.updateReadingListHandler))
+	router.HandlerFunc(http.MethodDelete, "/v1/lists/:id", a.requirePermission("readinglists:write", a.deleteReadingListHandler))
+	router.HandlerFunc(http.MethodPost, "/v1/lists/:id/books", a.requirePermission("readinglists:write", a.addBookToReadingListHandler))
+	router.HandlerFunc(http.MethodDelete, "/v1/lists/:id/books", a.requirePermission("readinglists:write", a.removeBookFromReadingListHandler))
+	router.HandlerFunc(http.MethodGet, "/v1/lists", a.requirePermission("reading_lists:read", a.listReadingListsHandler))
+	router.HandlerFunc(http.MethodGet, "/v1/lists/:id", a.requirePermission("reading_lists:read", a.displayReadingListHandler))
 
 	// Review routes
-	router.HandlerFunc(http.MethodPost, "/v1/books/:id/reviews", a.createReviewHandler)
-	router.HandlerFunc(http.MethodGet, "/v1/books/:id/reviews", a.listBookReviewsHandler)
-	router.HandlerFunc(http.MethodPatch, "/v1/reviews/:id", a.updateReviewHandler)
-	router.HandlerFunc(http.MethodDelete, "/v1/reviews/:id", a.deleteReviewHandler)
+	router.HandlerFunc(http.MethodPost, "/v1/books/:id/reviews", a.requirePermission("reviews:write", a.createReviewHandler))
+	router.HandlerFunc(http.MethodGet, "/v1/books/:id/reviews", a.requirePermission("reviews:read", a.listBookReviewsHandler))
+	router.HandlerFunc(http.MethodPatch, "/v1/reviews/:id", a.requirePermission("reviews:write", a.updateReviewHandler))
+	router.HandlerFunc(http.MethodDelete, "/v1/reviews/:id", a.requirePermission("reviews:write", a.deleteReviewHandler))
 
 	// User routes
 	router.HandlerFunc(http.MethodPost, "/v1/users", a.registerUserHandler)

@@ -5,7 +5,6 @@ import (
 	"slices"
 )
 
-// Regex to check if an email is valid
 var EmailRX = regexp.MustCompile(
 	"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
  

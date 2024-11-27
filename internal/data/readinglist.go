@@ -12,9 +12,9 @@ type ReadingList struct {
 	ID          int64     `json:"id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
-	CreatedBy   int64     `json:"created_by"` // User ID
-	Books       []int64   `json:"books"`      // List of Book IDs
-	Status      string    `json:"status"`     // "currently reading" or "completed"
+	CreatedBy   int64     `json:"created_by"` 
+	Books       []int64   `json:"books"`      
+	Status      string    `json:"status"`    
 	CreatedAt   time.Time `json:"created_at"`
 	Version     int32     `json:"version"`
 }
@@ -23,7 +23,6 @@ type ReadingListModel struct {
 	DB *sql.DB
 }
 
-// Insert creates a new reading list.
 func (m ReadingListModel) Insert(list *ReadingList) error {
 	query := `
 		INSERT INTO reading_lists (name, description, created_by, status)
@@ -38,7 +37,6 @@ func (m ReadingListModel) Insert(list *ReadingList) error {
 	return m.DB.QueryRowContext(ctx, query, args...).Scan(&list.ID, &list.CreatedAt, &list.Version)
 }
 
-// Get retrieves a specific reading list by ID.
 func (m ReadingListModel) Get(id int64) (*ReadingList, error) {
 	if id < 1 {
 		return nil, ErrRecordNotFound
@@ -68,7 +66,6 @@ func (m ReadingListModel) Get(id int64) (*ReadingList, error) {
 		}
 	}
 
-	// Fetch associated books
 	bookQuery := `SELECT book_id FROM reading_list_books WHERE reading_list_id = $1`
 	rows, err := m.DB.QueryContext(ctx, bookQuery, id)
 	if err != nil {
@@ -88,7 +85,6 @@ func (m ReadingListModel) Get(id int64) (*ReadingList, error) {
 	return &list, nil
 }
 
-// Update modifies an existing reading list.
 func (m ReadingListModel) Update(list *ReadingList) error {
 	query := `
 		UPDATE reading_lists
@@ -114,7 +110,6 @@ func (m ReadingListModel) Update(list *ReadingList) error {
 	return nil
 }
 
-// Delete removes a reading list.
 func (m ReadingListModel) Delete(id int64) error {
 	if id < 1 {
 		return ErrRecordNotFound
@@ -139,13 +134,11 @@ func (m ReadingListModel) Delete(id int64) error {
 		return ErrRecordNotFound
 	}
 
-	// Clean up associated books
 	deleteBooksQuery := `DELETE FROM reading_list_books WHERE reading_list_id = $1`
 	_, err = m.DB.ExecContext(ctx, deleteBooksQuery, id)
 	return err
 }
 
-// AddBook adds a book to a reading list.
 func (m ReadingListModel) AddBook(listID, bookID int64) error {
 	query := `
 		INSERT INTO reading_list_books (reading_list_id, book_id)
@@ -158,7 +151,6 @@ func (m ReadingListModel) AddBook(listID, bookID int64) error {
 	return err
 }
 
-// RemoveBook removes a book from a reading list.
 func (m ReadingListModel) RemoveBook(listID, bookID int64) error {
 	query := `
 		DELETE FROM reading_list_books
@@ -213,7 +205,6 @@ func (m ReadingListModel) GetAll(name string, filters Filters) ([]*ReadingList, 
 			return nil, Metadata{}, err
 		}
 
-		// Fetch associated books for each reading list
 		bookQuery := `SELECT book_id FROM reading_list_books WHERE reading_list_id = $1`
 		bookRows, err := m.DB.QueryContext(ctx, bookQuery, list.ID)
 		if err != nil {
@@ -241,3 +232,56 @@ func (m ReadingListModel) GetAll(name string, filters Filters) ([]*ReadingList, 
 	return lists, metadata, nil
 }
 
+func (m ReadingListModel) GetAllByUser(userID int64, name string, filters Filters) ([]*ReadingList, Metadata, error) {
+	query := fmt.Sprintf(`
+		SELECT COUNT(*) OVER(), id, name, description, created_by, status, created_at, version
+		FROM reading_lists
+		WHERE created_by = $1
+		AND (name ILIKE $2 OR $2 = '')
+		ORDER BY %s %s, id ASC
+		LIMIT $3 OFFSET $4`, filters.sortColumn(), filters.sortDirection())
+
+	args := []interface{}{
+		userID,              
+		"%" + name + "%",    
+		filters.limit(),    
+		filters.offset(),    
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	rows, err := m.DB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, Metadata{}, err
+	}
+	defer rows.Close()
+
+	totalRecords := 0
+	lists := []*ReadingList{}
+
+	for rows.Next() {
+		var list ReadingList
+		err := rows.Scan(
+			&totalRecords,
+			&list.ID,
+			&list.Name,
+			&list.Description,
+			&list.CreatedBy,
+			&list.Status,
+			&list.CreatedAt,
+			&list.Version,
+		)
+		if err != nil {
+			return nil, Metadata{}, err
+		}
+		lists = append(lists, &list)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, Metadata{}, err
+	}
+
+	metadata := calculateMetaData(totalRecords, filters.Page, filters.PageSize)
+	return lists, metadata, nil
+}

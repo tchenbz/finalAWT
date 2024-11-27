@@ -10,7 +10,6 @@ import (
 	"github.com/tchenbz/test3AWT/internal/validator"
 )
 
-//Handler to create a book
 func (a *applicationDependencies) createBookHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Title       string   `json:"title"`
@@ -32,14 +31,12 @@ func (a *applicationDependencies) createBookHandler(w http.ResponseWriter, r *ht
 		a.failedValidationResponse(w, r, map[string]string{"publication_date": "must be a valid date in YYYY-MM-DD format"})
 		return
 	}
-	//input.Publication = parsedDate
-
 
 	book := &data.Book{
 		Title:       input.Title,
 		Authors:     input.Authors,
 		ISBN:        input.ISBN,
-        Publication: parsedDate, // Assign the parsed date here
+        Publication: parsedDate, 
 		Genre:       input.Genre,
 		Description: input.Description,
 	}
@@ -67,8 +64,6 @@ func (a *applicationDependencies) createBookHandler(w http.ResponseWriter, r *ht
 	}
 }
 
-
-// Handler to display book details
 func (a *applicationDependencies) displayBookHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := a.readIDParam(r)
 	if err != nil {
@@ -94,7 +89,6 @@ func (a *applicationDependencies) displayBookHandler(w http.ResponseWriter, r *h
 	}
 }
 
-// Handler to update book details
 func (a *applicationDependencies) updateBookHandler(w http.ResponseWriter, r *http.Request) {
     id, err := a.readIDParam(r)
     if err != nil {
@@ -117,7 +111,7 @@ func (a *applicationDependencies) updateBookHandler(w http.ResponseWriter, r *ht
         Title       *string   `json:"title"`
         Authors     *[]string `json:"authors"`
         ISBN        *string   `json:"isbn"`
-        Publication *string   `json:"publication_date"` // Optional string
+        Publication *string   `json:"publication_date"` 
         Genre       *string   `json:"genre"`
         Description *string   `json:"description"`
     }
@@ -172,7 +166,6 @@ func (a *applicationDependencies) updateBookHandler(w http.ResponseWriter, r *ht
     }
 }
 
-// Handler to delete a book
 func (a *applicationDependencies) deleteBookHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := a.readIDParam(r)
 	if err != nil {
@@ -198,7 +191,6 @@ func (a *applicationDependencies) deleteBookHandler(w http.ResponseWriter, r *ht
 	}
 }
 
-// Handler to list all books with filters
 func (a *applicationDependencies) listBooksHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Title  string
@@ -240,7 +232,6 @@ func (a *applicationDependencies) listBooksHandler(w http.ResponseWriter, r *htt
 }
 
 func (a *applicationDependencies) searchBooksHandler(w http.ResponseWriter, r *http.Request) {
-	// Parse query parameters
 	var input struct {
 		Title  string
 		Author string
@@ -257,7 +248,6 @@ func (a *applicationDependencies) searchBooksHandler(w http.ResponseWriter, r *h
 	input.Filters.Sort = a.getSingleQueryParameter(query, "sort", "id")
 	input.Filters.SortSafeList = []string{"id", "title", "genre", "authors", "-id", "-title", "-genre", "-authors"}
 
-	// Validate the filters
 	v := validator.New()
 	data.ValidateFilters(v, input.Filters)
 	if !v.IsEmpty() {
@@ -265,14 +255,12 @@ func (a *applicationDependencies) searchBooksHandler(w http.ResponseWriter, r *h
 		return
 	}
 
-	// Retrieve books based on search criteria
 	books, metadata, err := a.bookModel.GetAll(input.Title, input.Author, input.Genre, input.Filters)
 	if err != nil {
 		a.serverErrorResponse(w, r, err)
 		return
 	}
 
-	// Send JSON response
 	data := envelope{
 		"books":    books,
 		"metadata": metadata,

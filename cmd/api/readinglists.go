@@ -9,12 +9,10 @@ import (
 	"github.com/tchenbz/test3AWT/internal/validator"
 )
 
-// createReadingListHandler handles creating a new reading list.
 func (a *applicationDependencies) createReadingListHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
-		CreatedBy   int64  `json:"created_by"`
 		Status      string `json:"status"`
 	}
 
@@ -24,19 +22,14 @@ func (a *applicationDependencies) createReadingListHandler(w http.ResponseWriter
 		return
 	}
 
+	user := a.contextGetUser(r) 
+
 	list := &data.ReadingList{
 		Name:        input.Name,
 		Description: input.Description,
-		CreatedBy:   input.CreatedBy,
+		CreatedBy:   user.ID, 
 		Status:      input.Status,
 	}
-
-	// v := validator.New()
-	// data.ValidateReadingList(v, list)
-	// if !v.IsEmpty() {
-	// 	a.failedValidationResponse(w, r, v.Errors)
-	// 	return
-	// }
 
 	err = a.readingListModel.Insert(list)
 	if err != nil {
@@ -45,7 +38,7 @@ func (a *applicationDependencies) createReadingListHandler(w http.ResponseWriter
 	}
 
 	headers := make(http.Header)
-	headers.Set("Location", "/api/v1/lists/"+strconv.FormatInt(list.ID, 10))
+	headers.Set("Location", "/v1/lists/"+strconv.FormatInt(list.ID, 10))
 
 	data := envelope{"reading_list": list}
 	err = a.writeJSON(w, http.StatusCreated, data, headers)
@@ -54,7 +47,6 @@ func (a *applicationDependencies) createReadingListHandler(w http.ResponseWriter
 	}
 }
 
-// displayReadingListHandler handles fetching a specific reading list by ID.
 func (a *applicationDependencies) displayReadingListHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := a.readIDParam(r)
 	if err != nil {
@@ -73,6 +65,13 @@ func (a *applicationDependencies) displayReadingListHandler(w http.ResponseWrite
 		return
 	}
 
+	user := a.contextGetUser(r)
+
+	if list.CreatedBy != user.ID {
+		a.notPermittedResponse(w, r)
+		return
+	}
+
 	data := envelope{"reading_list": list}
 	err = a.writeJSON(w, http.StatusOK, data, nil)
 	if err != nil {
@@ -80,7 +79,7 @@ func (a *applicationDependencies) displayReadingListHandler(w http.ResponseWrite
 	}
 }
 
-// updateReadingListHandler handles updating a reading list by ID.
+
 func (a *applicationDependencies) updateReadingListHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := a.readIDParam(r)
 	if err != nil {
@@ -96,6 +95,13 @@ func (a *applicationDependencies) updateReadingListHandler(w http.ResponseWriter
 		default:
 			a.serverErrorResponse(w, r, err)
 		}
+		return
+	}
+
+	user := a.contextGetUser(r)
+
+	if list.CreatedBy != user.ID {
+		a.notPermittedResponse(w, r)
 		return
 	}
 
@@ -121,16 +127,14 @@ func (a *applicationDependencies) updateReadingListHandler(w http.ResponseWriter
 		list.Status = *input.Status
 	}
 
-	// v := validator.New()
-	// data.ValidateReadingList(v, list)
-	// if !v.IsEmpty() {
-	// 	a.failedValidationResponse(w, r, v.Errors)
-	// 	return
-	// }
-
 	err = a.readingListModel.Update(list)
 	if err != nil {
-		a.serverErrorResponse(w, r, err)
+		switch {
+		case errors.Is(err, data.ErrEditConflict):
+			a.editConflictResponse(w, r)
+		default:
+			a.serverErrorResponse(w, r, err)
+		}
 		return
 	}
 
@@ -141,11 +145,28 @@ func (a *applicationDependencies) updateReadingListHandler(w http.ResponseWriter
 	}
 }
 
-// deleteReadingListHandler handles deleting a reading list by ID.
 func (a *applicationDependencies) deleteReadingListHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := a.readIDParam(r)
 	if err != nil {
 		a.notFoundResponse(w, r)
+		return
+	}
+
+	list, err := a.readingListModel.Get(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			a.notFoundResponse(w, r)
+		default:
+			a.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	user := a.contextGetUser(r)
+
+	if list.CreatedBy != user.ID {
+		a.notPermittedResponse(w, r)
 		return
 	}
 
@@ -167,11 +188,28 @@ func (a *applicationDependencies) deleteReadingListHandler(w http.ResponseWriter
 	}
 }
 
-// addBookToReadingListHandler handles adding a book to a reading list.
 func (a *applicationDependencies) addBookToReadingListHandler(w http.ResponseWriter, r *http.Request) {
 	listID, err := a.readIDParam(r)
 	if err != nil {
 		a.notFoundResponse(w, r)
+		return
+	}
+
+	list, err := a.readingListModel.Get(listID)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			a.notFoundResponse(w, r)
+		default:
+			a.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	user := a.contextGetUser(r)
+
+	if list.CreatedBy != user.ID {
+		a.notPermittedResponse(w, r)
 		return
 	}
 
@@ -198,11 +236,28 @@ func (a *applicationDependencies) addBookToReadingListHandler(w http.ResponseWri
 	}
 }
 
-// removeBookFromReadingListHandler handles removing a book from a reading list.
 func (a *applicationDependencies) removeBookFromReadingListHandler(w http.ResponseWriter, r *http.Request) {
 	listID, err := a.readIDParam(r)
 	if err != nil {
 		a.notFoundResponse(w, r)
+		return
+	}
+
+	list, err := a.readingListModel.Get(listID)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			a.notFoundResponse(w, r)
+		default:
+			a.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	user := a.contextGetUser(r)
+
+	if list.CreatedBy != user.ID {
+		a.notPermittedResponse(w, r)
 		return
 	}
 
@@ -229,7 +284,6 @@ func (a *applicationDependencies) removeBookFromReadingListHandler(w http.Respon
 	}
 }
 
-// listReadingListsHandler handles listing all reading lists with optional pagination.
 func (a *applicationDependencies) listReadingListsHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Name string
@@ -250,7 +304,9 @@ func (a *applicationDependencies) listReadingListsHandler(w http.ResponseWriter,
 		return
 	}
 
-	lists, metadata, err := a.readingListModel.GetAll(input.Name, input.Filters)
+	user := a.contextGetUser(r)
+
+	lists, metadata, err := a.readingListModel.GetAllByUser(user.ID, input.Name, input.Filters)
 	if err != nil {
 		a.serverErrorResponse(w, r, err)
 		return
