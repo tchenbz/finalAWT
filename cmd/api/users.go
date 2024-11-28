@@ -144,5 +144,115 @@ func (a *applicationDependencies) activateUserHandler(w http.ResponseWriter, r *
     }
 }
 
+func (a *applicationDependencies) getUserProfileHandler(w http.ResponseWriter, r *http.Request) {
+	userID, err := a.readIDParam(r)
+	if err != nil {
+		a.notFoundResponse(w, r)
+		return
+	}
 
-			   
+	user, err := a.userModel.GetByID(userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			a.notFoundResponse(w, r)
+		default:
+			a.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	data := envelope{"user": user}
+	err = a.writeJSON(w, http.StatusOK, data, nil)
+	if err != nil {
+		a.serverErrorResponse(w, r, err)
+	}
+}
+
+func (a *applicationDependencies) getUserReadingListsHandler(w http.ResponseWriter, r *http.Request) {
+	userID, err := a.readIDParam(r)
+	if err != nil {
+		a.notFoundResponse(w, r)
+		return
+	}
+
+	var input struct {
+		Name string
+		data.Filters
+	}
+
+	query := r.URL.Query()
+	input.Name = a.getSingleQueryParameter(query, "name", "")
+	input.Filters.Page = a.getSingleIntegerParameter(query, "page", 1, validator.New())
+	input.Filters.PageSize = a.getSingleIntegerParameter(query, "page_size", 10, validator.New())
+	input.Filters.Sort = a.getSingleQueryParameter(query, "sort", "id")
+	input.Filters.SortSafeList = []string{"id", "name", "-id", "-name"}
+
+	v := validator.New()
+	data.ValidateFilters(v, input.Filters)
+	if !v.IsEmpty() {
+		a.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	lists, metadata, err := a.readingListModel.GetAllByUser(userID, input.Name, input.Filters)
+	if err != nil {
+		a.serverErrorResponse(w, r, err)
+		return
+	}
+
+	data := envelope{
+		"reading_lists": lists,
+		"metadata":      metadata,
+	}
+	err = a.writeJSON(w, http.StatusOK, data, nil)
+	if err != nil {
+		a.serverErrorResponse(w, r, err)
+	}
+}
+
+func (a *applicationDependencies) getUserReviewsHandler(w http.ResponseWriter, r *http.Request) {
+	userID, err := a.readIDParam(r)
+	if err != nil {
+		a.notFoundResponse(w, r)
+		return
+	}
+
+	var input struct {
+		Content string
+		Author  string
+		Rating  int
+		data.Filters
+	}
+
+	query := r.URL.Query()
+	input.Content = a.getSingleQueryParameter(query, "content", "")
+	input.Author = a.getSingleQueryParameter(query, "author", "")
+	input.Rating = a.getSingleIntegerParameter(query, "rating", 0, validator.New())
+	input.Filters.Page = a.getSingleIntegerParameter(query, "page", 1, validator.New())
+	input.Filters.PageSize = a.getSingleIntegerParameter(query, "page_size", 10, validator.New())
+	input.Filters.Sort = a.getSingleQueryParameter(query, "sort", "id")
+	input.Filters.SortSafeList = []string{"id", "rating", "helpful_count", "-id", "-rating", "-helpful_count"}
+
+	v := validator.New()
+	data.ValidateFilters(v, input.Filters)
+	if !v.IsEmpty() {
+		a.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	reviews, metadata, err := a.reviewModel.GetAllByUser(userID, input.Content, input.Author, input.Rating, input.Filters)
+	if err != nil {
+		a.serverErrorResponse(w, r, err)
+		return
+	}
+
+	data := envelope{
+		"reviews":  reviews,
+		"metadata": metadata,
+	}
+	err = a.writeJSON(w, http.StatusOK, data, nil)
+	if err != nil {
+		a.serverErrorResponse(w, r, err)
+	}
+}

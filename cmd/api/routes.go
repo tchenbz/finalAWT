@@ -37,6 +37,10 @@ func (a *applicationDependencies) routes() http.Handler {
 	router.HandlerFunc(http.MethodPost, "/v1/users", a.registerUserHandler)
 	router.HandlerFunc(http.MethodPut, "/v1/users/activated", a.activateUserHandler)
 	router.HandlerFunc(http.MethodPost, "/v1/tokens/authentication", a.createAuthenticationTokenHandler)
+	router.HandlerFunc(http.MethodGet, "/api/v1/users/:id", a.requireActivatedUser(a.getUserProfileHandler))
+	router.HandlerFunc(http.MethodGet, "/api/v1/users/:id/lists", a.requireActivatedUser(a.getUserReadingListsHandler))
+	router.HandlerFunc(http.MethodGet, "/api/v1/users/:id/reviews", a.requireActivatedUser(a.getUserReviewsHandler))
+
 
 	// Return router with panic recovery and rate limiting
 	return a.recoverPanic(a.rateLimit(a.authenticate(router)))

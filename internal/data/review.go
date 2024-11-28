@@ -238,3 +238,62 @@ func (m ReviewModel) GetAllForBook(bookID int64, content, author string, rating 
 	metadata := calculateMetaData(totalRecords, filters.Page, filters.PageSize)
 	return reviews, metadata, nil
 }
+
+func (m ReviewModel) GetAllByUser(userID int64, content, author string, rating int, filters Filters) ([]*Review, Metadata, error) {
+	query := fmt.Sprintf(`
+		SELECT COUNT(*) OVER(), id, book_id, content, author, rating, helpful_count, created_at, version
+		FROM reviews
+		WHERE user_id = $1
+		AND (content ILIKE $2 OR $2 = '')
+		AND (author ILIKE $3 OR $3 = '')
+		AND (rating = $4 OR $4 = 0)
+		ORDER BY %s %s, id ASC
+		LIMIT $5 OFFSET $6`, filters.sortColumn(), filters.sortDirection())
+
+	args := []interface{}{
+		userID,
+		"%" + content + "%",
+		"%" + author + "%",
+		rating,
+		filters.limit(),
+		filters.offset(),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	rows, err := m.DB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, Metadata{}, err
+	}
+	defer rows.Close()
+
+	totalRecords := 0
+	reviews := []*Review{}
+
+	for rows.Next() {
+		var review Review
+		err := rows.Scan(
+			&totalRecords,
+			&review.ID,
+			&review.BookID,
+			&review.Content,
+			&review.Author,
+			&review.Rating,
+			&review.HelpfulCount,
+			&review.CreatedAt,
+			&review.Version,
+		)
+		if err != nil {
+			return nil, Metadata{}, err
+		}
+		reviews = append(reviews, &review)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, Metadata{}, err
+	}
+
+	metadata := calculateMetaData(totalRecords, filters.Page, filters.PageSize)
+	return reviews, metadata, nil
+}
