@@ -1,15 +1,19 @@
 package main
 
 import (
-    "errors"
-    "net/http"
-    "time"
+	"errors"
+	"fmt"
+	"net/http"
+	"time"
 
-    "github.com/tchenbz/test3AWT/internal/data"
-    "github.com/tchenbz/test3AWT/internal/validator"
+	"github.com/tchenbz/test3AWT/internal/data"
+	"github.com/tchenbz/test3AWT/internal/validator"
 )
 
 func (a *applicationDependencies) createAuthenticationTokenHandler(w http.ResponseWriter, r *http.Request) {
+    fmt.Println("Authentication handler triggered")
+    fmt.Println("Request method:", r.Method)
+    fmt.Println("Request headers:", r.Header)
 	var incomingData struct {
         Email    string `json:"email"`
         Password string `json:"password"`

@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"flag"
+	//"log"
 	"log/slog"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,6 +36,9 @@ type serverConfig struct {
         password string
         sender   string
     } 
+	cors struct {
+        trustedOrigins []string
+    }
 }
 
 type applicationDependencies struct {
@@ -58,13 +63,19 @@ func main() {
 	flag.Float64Var(&settings.limiter.rps, "limiter-rps", 2, "Rate Limiter maximum requests per second")
 	flag.IntVar(&settings.limiter.burst, "limiter-burst", 5, "Rate Limiter maximum burst")
 	flag.BoolVar(&settings.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
-	flag.Parse()
 	flag.StringVar(&settings.smtp.host, "smtp-host", "sandbox.smtp.mailtrap.io", "SMTP host")
 	flag.IntVar(&settings.smtp.port, "smtp-port", 25, "SMTP port")
 	flag.StringVar(&settings.smtp.username, "smtp-username", "d120afa780d5b9", "SMTP username")
 	flag.StringVar(&settings.smtp.password, "smtp-password", "d72ca97563008b", "SMTP password")
 	flag.StringVar(&settings.smtp.sender, "smtp-sender", "Comments Community <no-reply@commentscommunity.tamikachen.net>", "SMTP sender")
 
+	flag.Func("cors-trusted-origins", "Trusted CORS origins (space separated)",
+	func(val string) error {
+		 settings.cors.trustedOrigins = strings.Fields(val)
+		 return nil
+	})
+
+	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 

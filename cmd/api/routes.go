@@ -9,6 +9,7 @@ func (a *applicationDependencies) routes() http.Handler {
 	router := httprouter.New()
 	router.NotFound = http.HandlerFunc(a.notFoundResponse)
 	router.MethodNotAllowed = http.HandlerFunc(a.methodNotAllowedResponse)
+	router.HandlerFunc(http.MethodGet, "/v1/healthcheck", a.healthCheckHandler)
 
 	// Book routes
 	router.HandlerFunc(http.MethodGet, "/api/v1/books/search", a.searchBooksHandler)
@@ -43,6 +44,5 @@ func (a *applicationDependencies) routes() http.Handler {
 
 
 	// Return router with panic recovery and rate limiting
-	return a.recoverPanic(a.rateLimit(a.authenticate(router)))
-
+	return a.recoverPanic(a.enableCORS(a.rateLimit(a.authenticate(router))))
 }
