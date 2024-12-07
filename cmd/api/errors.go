@@ -75,3 +75,8 @@ func (a *applicationDependencies) notPermittedResponse(w http.ResponseWriter, r 
 	message := "your user account doesn't have the necessary permissions to access this resource"
 	a.errorResponseJSON(w, r, http.StatusForbidden, message)
 }
+
+func (a *applicationDependencies) invalidCredentialsResponse(w http.ResponseWriter, r *http.Request) {
+	message := "invalid authentication credentials"
+	a.errorResponseJSON(w, r, http.StatusUnauthorized, message)
+}

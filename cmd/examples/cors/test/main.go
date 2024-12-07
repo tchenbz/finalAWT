@@ -1,38 +1,43 @@
 package main
 
 import (
-	"flag"
-	"log"
-	"net/http"
+    "flag"
+    "log"
+    "net/http"
 )
-
-// create a simple HTML page with some JS added. Obviously in a professional
-// setting, we would have the JS code in a script file
-
+// We will access the POST /v1/tokens/authentication endpoint
 const html = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
 </head>
-
 <body>
-	<h1>Appletree CORS</h1>
+    <h1>Appletree Preflight CORS</h1>
     <div id="output"></div>
     <script>
          document.addEventListener('DOMContentLoaded', function() {
-         fetch("http://localhost:4000/v1/healthcheck")
-         .then(function (response) {
-                         response.text().then(function (text) {
-                         document.getElementById("output").innerHTML = text;
-                    });
-                },
-        function(err) {
-                    document.getElementById("output").innerHTML = err;
-                }
-            );
-        });
-  </script>
+         fetch("http://localhost:4000/v1/tokens/authentication", {
+           method: "POST",
+           headers: {
+                    'Content-Type': 'application/json'
+                    },
+           body: JSON.stringify({
+                    email: 'johnny@example.com',
+                    password: 'mangotree'
+                 })
+           }).then( function(response) {
+
+            response.text().then(function (text) {
+                document.getElementById("output").innerHTML = text;
+             });
+           },
+           function(err) {
+             document.getElementById("output").innerHTML = err;
+           }
+        );
+     });
+</script>
 </body>
 </html>`
 
@@ -42,11 +47,14 @@ func main() {
     flag.Parse()
 
     log.Printf("starting server on %s", *addr)
+
+
     err := http.ListenAndServe(*addr, 
            http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
               w.Write([]byte(html))
        }))
     log.Fatal(err)
 }
+
 
 

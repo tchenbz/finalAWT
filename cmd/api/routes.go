@@ -41,6 +41,8 @@ func (a *applicationDependencies) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/api/v1/users/:id", a.requireActivatedUser(a.getUserProfileHandler))
 	router.HandlerFunc(http.MethodGet, "/api/v1/users/:id/lists", a.requireActivatedUser(a.getUserReadingListsHandler))
 	router.HandlerFunc(http.MethodGet, "/api/v1/users/:id/reviews", a.requireActivatedUser(a.getUserReviewsHandler))
+	
+	router.HandlerFunc(http.MethodPost, "/api/v1/tokens/password-reset", (a.createPasswordResetTokenHandler))
 
 
 	// Return router with panic recovery and rate limiting
