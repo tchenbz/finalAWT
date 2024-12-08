@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"flag"
+
 	//"log"
 	"log/slog"
 	"os"
@@ -31,27 +32,27 @@ type serverConfig struct {
 	}
 	smtp struct {
 		host     string
-        port     int
-        username string
-        password string
-        sender   string
-    } 
+		port     int
+		username string
+		password string
+		sender   string
+	}
 	cors struct {
-        trustedOrigins []string
-    }
+		trustedOrigins []string
+	}
 }
 
 type applicationDependencies struct {
-	config          serverConfig
-	logger          *slog.Logger
-	bookModel       data.BookModel
+	config           serverConfig
+	logger           *slog.Logger
+	bookModel        data.BookModel
 	readingListModel data.ReadingListModel
-	reviewModel     data.ReviewModel
-	userModel 		data.UserModel
-	mailer 			mailer.Mailer
-	wg  			sync.WaitGroup 
-	tokenModel 		data.TokenModel
-	permissionModel data.PermissionModel
+	reviewModel      data.ReviewModel
+	userModel        data.UserModel
+	mailer           mailer.Mailer
+	wg               sync.WaitGroup
+	tokenModel       data.TokenModel
+	permissionModel  data.PermissionModel
 }
 
 func main() {
@@ -70,10 +71,10 @@ func main() {
 	flag.StringVar(&settings.smtp.sender, "smtp-sender", "Comments Community <no-reply@commentscommunity.tamikachen.net>", "SMTP sender")
 
 	flag.Func("cors-trusted-origins", "Trusted CORS origins (space separated)",
-	func(val string) error {
-		 settings.cors.trustedOrigins = strings.Fields(val)
-		 return nil
-	})
+		func(val string) error {
+			settings.cors.trustedOrigins = strings.Fields(val)
+			return nil
+		})
 
 	flag.Parse()
 
@@ -88,16 +89,16 @@ func main() {
 	logger.Info("database connection pool established")
 
 	appInstance := &applicationDependencies{
-		config:          settings,
-		logger:          logger,
-		bookModel:       data.BookModel{DB: db},
+		config:           settings,
+		logger:           logger,
+		bookModel:        data.BookModel{DB: db},
 		readingListModel: data.ReadingListModel{DB: db},
-		reviewModel:     data.ReviewModel{DB: db},
-		userModel: data.UserModel {DB: db},
-        mailer: mailer.New(settings.smtp.host, settings.smtp.port,
-		settings.smtp.username, settings.smtp.password, settings.smtp.sender),
-		tokenModel: data.TokenModel{DB: db},
-		permissionModel: data. PermissionModel{DB: db},
+		reviewModel:      data.ReviewModel{DB: db},
+		userModel:        data.UserModel{DB: db},
+		mailer: mailer.New(settings.smtp.host, settings.smtp.port,
+			settings.smtp.username, settings.smtp.password, settings.smtp.sender),
+		tokenModel:      data.TokenModel{DB: db},
+		permissionModel: data.PermissionModel{DB: db},
 	}
 
 	err = appInstance.serve()

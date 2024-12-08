@@ -127,3 +127,55 @@ func (a *applicationDependencies) createPasswordResetTokenHandler(w http.Respons
 	}
 
 }
+
+func (a *applicationDependencies) resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Password string `json:"password"`
+		Token    string `json:"token"`
+	}
+
+	err := a.readJSON(w, r, &input)
+	if err != nil {
+		a.badRequestResponse(w, r, err)
+		return
+	}
+
+	v := validator.New()
+	data.ValidatePasswordPlaintext(v, input.Password)
+
+	if !v.IsEmpty() {
+		a.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	user, err := a.userModel.GetForToken(data.ScopeAuthentication, input.Token)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			a.invalidAuthenticationTokenResponse(w, r)
+		default:
+			a.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	err = user.Password.Set(input.Password)
+	if err != nil {
+		a.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = a.userModel.Update(user)
+	if err != nil {
+		a.serverErrorResponse(w, r, err)
+		return
+	}
+
+	message := envelope{
+		"message": "your password was successfully reset",
+	}
+	err = a.writeJSON(w, http.StatusOK, message, nil)
+	if err != nil {
+		a.serverErrorResponse(w, r, err)
+	}
+}

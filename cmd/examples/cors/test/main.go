@@ -13,7 +13,7 @@ const html = `
     <meta charset="UTF-8">
 </head>
 <body>
-    <h1>Appletree Preflight CORS</h1>
+    <h1>Preflight CORS</h1>
     <div id="output"></div>
     <script>
          document.addEventListener('DOMContentLoaded', function() {
@@ -24,7 +24,7 @@ const html = `
                     },
            body: JSON.stringify({
                     email: 'johnny@example.com',
-                    password: 'mangotree'
+                    password: '12345678'
                  })
            }).then( function(response) {
 
